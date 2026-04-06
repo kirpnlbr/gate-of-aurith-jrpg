@@ -10,3 +10,7 @@ extends Resource
 @export var description: String = ""
 @export var action_text: String = "" # e.g. "{user} casts {skill}! {target} takes {value} damage!"
 @export var buff_duration: int = 0 # turns the buff/debuff lasts
+@export var required_stance: String = "" # "", "greatsword", or "greatshield"
+@export var status_effect: String = "" # ablaze, chilled, shocked, soaked
+@export var status_effect_chance: float = 0.0 # 0.0 to 1.0
+@export var is_melee: bool = false # if true, user moves close to target instead of partial step

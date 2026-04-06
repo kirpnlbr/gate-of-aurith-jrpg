@@ -15,5 +15,9 @@ extends Resource
 @export var sprite_idle: String = "" # folder path like "res://assets/sprites/battle/frames/sage_idle"
 @export var sprite_idle_alt: String = "" # alternate idle (e.g. Gustave greatshield stance)
 @export var sprite_attack: String = "" # folder path for basic attack frames
+@export var sprite_parry: String = "" # folder path for parry animation frames
+@export var sprite_parry_alt: String = "" # alternate parry (e.g. Gustave greatshield stance)
+@export var sprite_counter: String = "" # folder path for counterattack animation frames
+@export var sprite_counter_alt: String = "" # alternate counter (e.g. Gustave greatshield stance)
 @export var sprite_skill: String = "" # fallback single-skill folder
 @export var skill_sprite_map: Dictionary = {} # { "Fireball": "res://...frames/mage_fireball", ... }

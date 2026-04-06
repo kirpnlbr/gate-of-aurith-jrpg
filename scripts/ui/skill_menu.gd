@@ -2,6 +2,7 @@ extends VBoxContainer
 
 signal skill_selected(skill: Resource)
 signal cancelled
+signal highlight_changed(description: String)
 
 var _skills: Array[Resource] = []
 var _current_ap: int = 0
@@ -11,11 +12,12 @@ var _skill_buttons: Array[Button] = []
 var _cooldown: int = 0
 
 func _ready() -> void:
-	position = Vector2(190, 260)
-	custom_minimum_size = Vector2(250, 0)
+	# Position next to action menu (right of it, above action text box)
+	position = Vector2(148, 310)
+	custom_minimum_size = Vector2(200, 0)
 	visible = false
 
-func show_skills(skills: Array[Resource], current_ap: int) -> void:
+func show_skills(skills: Array[Resource], current_ap: int, stance: String = "") -> void:
 	_clear()
 	_skills = []
 	_current_ap = current_ap
@@ -26,6 +28,8 @@ func show_skills(skills: Array[Resource], current_ap: int) -> void:
 	for skill_res in skills:
 		var skill: SkillData = skill_res as SkillData
 		if skill == null:
+			continue
+		if skill.required_stance != "" and skill.required_stance != stance:
 			continue
 		_skills.append(skill)
 		var btn := Button.new()
@@ -59,6 +63,7 @@ func show_skills(skills: Array[Resource], current_ap: int) -> void:
 	visible = true
 	_active = true
 	_update_highlight()
+	_emit_current_description()
 
 func _clear() -> void:
 	for child in get_children():
@@ -88,6 +93,13 @@ func _update_highlight() -> void:
 			else:
 				btn.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
 
+func _emit_current_description() -> void:
+	if _current_index < _skills.size():
+		var skill: SkillData = _skills[_current_index] as SkillData
+		var desc: String = skill.description if skill.description != "" else skill.skill_name
+		var ap_info := "  [AP: %d]" % skill.ap_cost
+		highlight_changed.emit(desc + ap_info)
+
 func _process(_delta: float) -> void:
 	if not _active:
 		return
@@ -99,14 +111,20 @@ func _process(_delta: float) -> void:
 		if _current_index < 0:
 			_current_index = _skill_buttons.size() - 1
 		_update_highlight()
+		_emit_current_description()
+		Sfx.play_ui("menu_move")
 	elif Input.is_action_just_pressed("move_down"):
 		_current_index = (_current_index + 1) % _skill_buttons.size()
 		_update_highlight()
+		_emit_current_description()
+		Sfx.play_ui("menu_move")
 	elif Input.is_action_just_pressed("confirm"):
 		var skill: SkillData = _skills[_current_index] as SkillData
 		if _current_ap >= skill.ap_cost:
+			Sfx.play_ui("menu_select")
 			_active = false
 			skill_selected.emit(skill)
 	elif Input.is_action_just_pressed("cancel"):
+		Sfx.play_ui("menu_cancel")
 		_active = false
 		cancelled.emit()

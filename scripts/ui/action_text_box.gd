@@ -1,27 +1,21 @@
 extends PanelContainer
 
 var label: RichTextLabel = null
-var _tween: Tween = null
-var _char_count: int = 0
-const CHARS_PER_SECOND := 60.0
 
 func _ready() -> void:
-	# Style the panel
+	# Style the panel to match status panel aesthetic
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.05, 0.12, 0.92)
-	style.border_color = Color(0.4, 0.4, 0.6)
-	style.border_width_top = 2
-	style.border_width_bottom = 2
-	style.border_width_left = 2
-	style.border_width_right = 2
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
+	style.bg_color = Color(0.06, 0.07, 0.14, 0.9)
+	style.border_color = Color(0.3, 0.3, 0.5, 0.6)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
 	style.content_margin_left = 16
 	style.content_margin_right = 16
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	style.shadow_color = Color(0.1, 0.12, 0.3, 0.4)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, -2)
 	add_theme_stylebox_override("panel", style)
 
 	# Position at bottom of screen
@@ -42,26 +36,8 @@ func _ready() -> void:
 	add_child(label)
 
 func display(text: String) -> void:
-	if _tween and _tween.is_running():
-		_tween.kill()
 	label.text = text
 	label.visible_characters = -1
-
-func display_instant(text: String) -> void:
-	if _tween and _tween.is_running():
-		_tween.kill()
-	label.text = text
-	label.visible_characters = -1
-
-func skip_typewriter() -> void:
-	if _tween and _tween.is_running():
-		_tween.kill()
-		label.visible_characters = -1
-
-func is_typing() -> bool:
-	return _tween != null and _tween.is_running()
 
 func clear_text() -> void:
-	if _tween and _tween.is_running():
-		_tween.kill()
 	label.text = ""

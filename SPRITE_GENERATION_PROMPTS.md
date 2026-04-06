@@ -191,6 +191,146 @@ Or generate a fresh one if you want a different overworld look.
 
 ---
 
+## PARRY & COUNTERATTACK SPRITES
+
+Upload the corresponding character's idle sprite sheet as the reference image for each prompt.
+
+### 15. Mage — Parry (Staff Block)
+Reference: upload `mage_idle_sheet.png`
+
+```
+Sprite sheet of the EXACT same character from the attached reference image,
+facing RIGHT side profile, 3x3 grid, solid magenta #FF00FF background,
+1px gray #808080 border between each cell, sequence, frame by frame
+animation of a PARRY DEFLECTION with staff - frame 1 neutral stance
+sensing incoming attack, frame 2 staff swings forward defensively,
+frame 3 staff raised at angle bracing for impact, frame 4 IMPACT MOMENT
+staff catches the blow with bright blue-white energy flash at crystal orb,
+frame 5 shockwave ripple of blue sparks radiating from staff contact
+point, frame 6 pushes attacker back staff thrust forward with blue energy
+trail, frame 7 blue magic shield shimmer fading around body, frame 8
+recovers pulling staff back to center, frame 9 returns to confident idle
+stance, square aspect ratio, each cell identical size NO gaps NO padding,
+retro SNES 16-bit chibi pixel art bold dark outlines, very small character
+30-35 pixels tall, SHARP CRISP PIXEL EDGES NO ANTI-ALIASING. Replicate
+the character design, proportions, colors, and style of the attached
+reference image exactly.
+```
+
+### 16. Mage — Counterattack (Arcane Blast)
+Reference: upload `mage_idle_sheet.png`
+
+```
+Sprite sheet of the EXACT same character from the attached reference image,
+facing RIGHT side profile, 3x3 grid, solid magenta #FF00FF background,
+1px gray #808080 border between each cell, sequence, frame by frame
+animation of a SWIFT COUNTERATTACK magic blast - frame 1 confident smirk
+staff pulled back gathering energy, frame 2 crystal orb glows bright
+blue-white energy swirling in, frame 3 lunges forward staff thrust outward
+aggressively, frame 4 FIRES concentrated blue-white arcane beam from
+crystal orb toward right side, frame 5 beam at full intensity bright flash
+blue-cyan energy stream, frame 6 beam dissipating into scattered blue
+sparks and particles, frame 7 recoil pulling staff back from blast,
+frame 8 settling stance blue energy wisps fading, frame 9 returns to idle
+triumphant pose, square aspect ratio, each cell identical size NO gaps NO
+padding, retro SNES 16-bit chibi pixel art bold dark outlines, very small
+character 30-35 pixels tall, SHARP CRISP PIXEL EDGES NO ANTI-ALIASING.
+Replicate the character design, proportions, colors, and style of the
+attached reference image exactly.
+```
+
+### 17. Gustave — Parry (Greatsword Block)
+Reference: upload `gustave_idle_sheet.png`
+
+```
+Sprite sheet of the EXACT same character from the attached reference image,
+facing RIGHT side profile, 3x3 grid, solid magenta #FF00FF background,
+1px gray #808080 border between each cell, sequence, frame by frame
+animation of a POWERFUL PARRY with greatsword - frame 1 reads incoming
+attack shifts weight, frame 2 grips sword with both hands swings blade up
+defensively, frame 3 sword raised diagonally bracing for hit, frame 4
+IMPACT MOMENT sword clashes with bright yellow-white spark flash at blade
+edge, frame 5 metal spark shower radiating from contact point, frame 6
+shoves attacker back with sword pushing forward aggressively, frame 7
+sword scrapes with lingering spark trail, frame 8 pulls greatsword back
+to shoulder, frame 9 cocky smirk returns to idle stance sword resting on
+shoulder, square aspect ratio, each cell identical size NO gaps NO padding,
+retro SNES 16-bit chibi pixel art bold dark outlines, very small character
+30-35 pixels tall, SHARP CRISP PIXEL EDGES NO ANTI-ALIASING. Replicate
+the character design, proportions, colors, and style of the attached
+reference image exactly.
+```
+
+### 18. Gustave — Counterattack (Riposte Slash)
+Reference: upload `gustave_idle_sheet.png`
+
+```
+Sprite sheet of the EXACT same character from the attached reference image,
+facing RIGHT side profile, 3x3 grid, solid magenta #FF00FF background,
+1px gray #808080 border between each cell, sequence, frame by frame
+animation of a DEVASTATING COUNTERATTACK riposte slash - frame 1 winds up
+greatsword pulled far back behind body with both hands, frame 2 lunges
+forward explosively weight on front foot, frame 3 massive horizontal sword
+swing arc begins golden slash trail, frame 4 FULL SWING greatsword slashes
+across screen with bright golden-yellow slash arc effect, frame 5 slash
+impact explosion of golden sparks at contact, frame 6 follow-through sword
+extended fully forward, frame 7 golden slash trail and sparks dissipating,
+frame 8 pulls sword back recovering stance, frame 9 rests sword on
+shoulder cocky victorious pose, square aspect ratio, each cell identical
+size NO gaps NO padding, retro SNES 16-bit chibi pixel art bold dark
+outlines, very small character 30-35 pixels tall, SHARP CRISP PIXEL EDGES
+NO ANTI-ALIASING. Replicate the character design, proportions, colors, and
+style of the attached reference image exactly.
+```
+
+### 19. Sage — Parry (Book Shield)
+Reference: upload `sage_idle_sheet.png`
+
+```
+Sprite sheet of the EXACT same character from the attached reference image,
+facing RIGHT side profile, 3x3 grid, solid magenta #FF00FF background,
+1px gray #808080 border between each cell, sequence, frame by frame
+animation of a MAGIC BARRIER PARRY - frame 1 senses danger book pages
+begin to glow, frame 2 thrusts book forward pages flipping rapidly,
+frame 3 translucent green magic hexagonal shield materializes in front of
+body from book, frame 4 IMPACT MOMENT attack hits barrier bright
+green-white flash with energy ripple across shield surface, frame 5 shield
+absorbs hit cracks with green energy sparks, frame 6 barrier pulses and
+pushes back with green shockwave, frame 7 shield shatters into green
+glowing fragments, frame 8 book pages settle green energy fading, frame 9
+adjusts glasses returns to idle stance satisfied smirk, square aspect
+ratio, each cell identical size NO gaps NO padding, retro SNES 16-bit
+chibi pixel art bold dark outlines, very small character 30-35 pixels
+tall, SHARP CRISP PIXEL EDGES NO ANTI-ALIASING. Replicate the character
+design, proportions, colors, and style of the attached reference image
+exactly.
+```
+
+### 20. Sage — Counterattack (Nature's Wrath)
+Reference: upload `sage_idle_sheet.png`
+
+```
+Sprite sheet of the EXACT same character from the attached reference image,
+facing RIGHT side profile, 3x3 grid, solid magenta #FF00FF background,
+1px gray #808080 border between each cell, sequence, frame by frame
+animation of a SWIFT COUNTERATTACK nature magic strike - frame 1 eyes
+flash behind glasses book snaps open glowing brightly, frame 2 right hand
+extends forward channeling green energy from book, frame 3 bright green
+energy vines and thorns erupt from the ground rushing toward right side,
+frame 4 FULL BLAST green energy beam fires from palm with swirling vine
+energy spiraling around it, frame 5 beam impact with burst of green leaves
+and nature energy particles, frame 6 energy tendrils whip outward with
+scattered green sparks, frame 7 vines retract energy dissipating, frame 8
+closes book energy wisps fading, frame 9 pushes glasses up returns to
+confident idle stance, square aspect ratio, each cell identical size NO
+gaps NO padding, retro SNES 16-bit chibi pixel art bold dark outlines,
+very small character 30-35 pixels tall, SHARP CRISP PIXEL EDGES NO
+ANTI-ALIASING. Replicate the character design, proportions, colors, and
+style of the attached reference image exactly.
+```
+
+---
+
 ## POST-GENERATION: Removing Magenta Background
 
 After generating all sprites, remove the magenta chroma key in Godot. The game already has chroma key removal code in the existing mage.gd. Alternatively, use ImageMagick:

@@ -15,3 +15,5 @@ extends Resource
 @export var boss: bool = false
 @export var sprite_scale: float = 1.0
 @export var sprite_path: String = ""
+@export var sprite_idle: String = "" # folder path for idle animation frames
+@export var attack_sprite_map: Dictionary = {} # { "Goblin Slash": "res://...frames/goblin_slash" }

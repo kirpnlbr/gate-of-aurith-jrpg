@@ -2,6 +2,7 @@ extends VBoxContainer
 
 signal item_selected(item_data: Resource, item_index: int)
 signal cancelled
+signal highlight_changed(description: String)
 
 var _items: Array[Dictionary] = []
 var _active := false
@@ -10,8 +11,9 @@ var _item_buttons: Array[Button] = []
 var _cooldown: int = 0
 
 func _ready() -> void:
-	position = Vector2(190, 260)
-	custom_minimum_size = Vector2(250, 0)
+	# Position next to action menu (right of it, above action text box)
+	position = Vector2(148, 310)
+	custom_minimum_size = Vector2(200, 0)
 	visible = false
 
 func show_items(items: Array[Dictionary]) -> void:
@@ -59,6 +61,7 @@ func show_items(items: Array[Dictionary]) -> void:
 	visible = true
 	_active = true
 	_update_highlight()
+	_emit_current_description()
 
 func _clear() -> void:
 	for child in get_children():
@@ -80,6 +83,14 @@ func _update_highlight() -> void:
 			btn.text = base_text
 			btn.add_theme_color_override("font_color", Color.WHITE)
 
+func _emit_current_description() -> void:
+	if _items.is_empty():
+		return
+	if _current_index < _items.size():
+		var item: ItemData = _items[_current_index].data as ItemData
+		var desc: String = item.description if item.description != "" else item.item_name
+		highlight_changed.emit(desc)
+
 func _process(_delta: float) -> void:
 	if not _active:
 		return
@@ -96,13 +107,19 @@ func _process(_delta: float) -> void:
 		if _current_index < 0:
 			_current_index = _item_buttons.size() - 1
 		_update_highlight()
+		_emit_current_description()
+		Sfx.play_ui("menu_move")
 	elif Input.is_action_just_pressed("move_down"):
 		_current_index = (_current_index + 1) % _item_buttons.size()
 		_update_highlight()
+		_emit_current_description()
+		Sfx.play_ui("menu_move")
 	elif Input.is_action_just_pressed("confirm"):
+		Sfx.play_ui("menu_select")
 		_active = false
 		var item_dict: Dictionary = _items[_current_index]
 		item_selected.emit(item_dict.data, _current_index)
 	elif Input.is_action_just_pressed("cancel"):
+		Sfx.play_ui("menu_cancel")
 		_active = false
 		cancelled.emit()

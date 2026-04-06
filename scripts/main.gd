@@ -8,12 +8,21 @@ var current_scene: Node = null
 var transition_overlay: ColorRect = null
 var transition_layer: CanvasLayer = null
 var _title_tween: Tween = null
+var debug_menu: CanvasLayer = null
 
 func _ready() -> void:
 	party_state = PartyState.new()
 	party_state.setup()
 	_create_transition_overlay()
+	_create_debug_menu()
 	_show_title()
+
+func _create_debug_menu() -> void:
+	var debug_script: GDScript = load("res://scripts/debug_menu.gd")
+	debug_menu = CanvasLayer.new()
+	debug_menu.set_script(debug_script)
+	add_child(debug_menu)
+	debug_menu.init(self)
 
 func _create_transition_overlay() -> void:
 	transition_layer = CanvasLayer.new()
@@ -99,11 +108,13 @@ func _load_overworld() -> void:
 	var overworld := overworld_scene.instantiate()
 	overworld.init(self)
 	_set_current_scene(overworld)
+	Sfx.play_bgm("overworld")
 
 func start_battle(encounter_id: int, enemy_group: Array, is_boss: bool) -> void:
 	if state != GameState.OVERWORLD:
 		return
 	state = GameState.BATTLE_TRANSITION
+	Sfx.play_ui("battle_encounter")
 	await _fade_out(0.3)
 	var overworld_ref := current_scene
 	if overworld_ref:
@@ -117,9 +128,15 @@ func start_battle(encounter_id: int, enemy_group: Array, is_boss: bool) -> void:
 	add_child(battle)
 	battle.battle_finished.connect(_on_battle_finished.bind(encounter_id, overworld_ref))
 	state = GameState.BATTLE
+	if is_boss:
+		Sfx.play_bgm("boss", -7.0)
+	else:
+		Sfx.play_bgm("battle", -7.0)
 	await _fade_in(0.3)
 
 func _on_battle_finished(result: String, encounter_id: int, overworld_ref: Node) -> void:
+	# Ensure time scale is restored in case hit_stop coroutine was abandoned
+	Engine.time_scale = 1.0
 	await _fade_out(0.3)
 	# Remove battle scene
 	for child in get_children():
@@ -128,6 +145,7 @@ func _on_battle_finished(result: String, encounter_id: int, overworld_ref: Node)
 
 	if result == "victory":
 		state = GameState.OVERWORLD
+		Sfx.play_bgm("overworld")
 		if overworld_ref and is_instance_valid(overworld_ref):
 			overworld_ref.visible = true
 			overworld_ref.set_process(true)
@@ -136,6 +154,7 @@ func _on_battle_finished(result: String, encounter_id: int, overworld_ref: Node)
 		await _fade_in(0.3)
 	elif result == "defeat":
 		state = GameState.GAME_OVER
+		Sfx.stop_bgm()
 		_show_game_over()
 		await _fade_in(0.5)
 

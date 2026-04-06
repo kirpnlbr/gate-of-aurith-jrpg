@@ -10,6 +10,11 @@ var encounter_zones: Array[EncounterZone] = []
 var player_node: Node2D = null
 var player_start := Vector2i(12, 2)
 
+# Map rendering - single texture instead of per-tile nodes
+var _map_image: Image = null
+var _map_texture: ImageTexture = null
+var _map_sprite: Sprite2D = null
+
 # Colors
 const COLOR_FLOOR := Color(0.18, 0.18, 0.25)
 const COLOR_WALL := Color(0.08, 0.08, 0.12)
@@ -123,17 +128,24 @@ func _create_goblin_data() -> EnemyData:
 	goblin.element_resistance = "earth"
 	goblin.battle_color = Color(0.4, 0.5, 0.3)
 	goblin.sprite_path = "res://assets/sprites/battle/goblin.png"
+	goblin.sprite_idle = "res://assets/sprites/battle/frames/goblin_idle"
+	goblin.attack_sprite_map = {
+		"Goblin Slash": "res://assets/sprites/battle/frames/goblin_slash",
+		"Double Strike": "res://assets/sprites/battle/frames/goblin_double_strike",
+	}
 
 	var slash := AttackPattern.new()
 	slash.pattern_name = "Goblin Slash"
-	slash.hits = [{"delay": 0.8, "window": 0.4, "damage_pct": 1.0}]
+	slash.is_melee = true
+	slash.hits = [{"delay": 0.8, "window": 0.48, "damage_pct": 1.0}]
 	slash.action_text = "{attacker} slashes at {target}!"
 
 	var double_strike := AttackPattern.new()
 	double_strike.pattern_name = "Double Strike"
+	double_strike.is_melee = true
 	double_strike.hits = [
-		{"delay": 0.6, "window": 0.3, "damage_pct": 0.5},
-		{"delay": 0.4, "window": 0.3, "damage_pct": 0.5},
+		{"delay": 0.6, "window": 0.38, "damage_pct": 0.5},
+		{"delay": 0.4, "window": 0.38, "damage_pct": 0.5},
 	]
 	double_strike.action_text = "{attacker} strikes twice at {target}!"
 
@@ -154,13 +166,19 @@ func _create_wraith_data() -> EnemyData:
 	wraith.battle_color = Color(0.5, 0.2, 0.6)
 	wraith.sprite_scale = 1.1
 	wraith.sprite_path = "res://assets/sprites/battle/wraith.png"
+	wraith.sprite_idle = "res://assets/sprites/battle/frames/wraith_idle"
+	wraith.attack_sprite_map = {
+		"Spectral Claw": "res://assets/sprites/battle/frames/wraith_spectral_claw",
+		"Delayed Haunt": "res://assets/sprites/battle/frames/wraith_delayed_haunt",
+	}
 
 	var triple := AttackPattern.new()
 	triple.pattern_name = "Spectral Claw"
+	triple.is_melee = true
 	triple.hits = [
-		{"delay": 0.5, "window": 0.25, "damage_pct": 0.35},
-		{"delay": 0.3, "window": 0.22, "damage_pct": 0.3},
-		{"delay": 0.3, "window": 0.22, "damage_pct": 0.35},
+		{"delay": 0.5, "window": 0.33, "damage_pct": 0.35},
+		{"delay": 0.3, "window": 0.30, "damage_pct": 0.3},
+		{"delay": 0.3, "window": 0.30, "damage_pct": 0.35},
 	]
 	triple.action_text = "{attacker} unleashes Spectral Claws at {target}!"
 
@@ -168,7 +186,7 @@ func _create_wraith_data() -> EnemyData:
 	delayed.pattern_name = "Delayed Haunt"
 	delayed.hits = [
 		{"delay": 0.4, "window": 0.0, "damage_pct": 0.0}, # feint
-		{"delay": 1.2, "window": 0.3, "damage_pct": 1.2},
+		{"delay": 1.2, "window": 0.38, "damage_pct": 1.2},
 	]
 	delayed.action_text = "{attacker} haunts {target} with a spectral strike!"
 
@@ -189,62 +207,121 @@ func _create_golem_data() -> EnemyData:
 	golem.battle_color = Color(0.5, 0.4, 0.3)
 	golem.sprite_scale = 1.3
 	golem.sprite_path = "res://assets/sprites/battle/golem.png"
+	golem.sprite_idle = "res://assets/sprites/battle/frames/golem_idle"
+	golem.attack_sprite_map = {
+		"Ground Slam": "res://assets/sprites/battle/frames/golem_ground_slam",
+		"Boulder Toss": "res://assets/sprites/battle/frames/golem_boulder_toss",
+	}
 
 	var slam := AttackPattern.new()
 	slam.pattern_name = "Ground Slam"
-	slam.hits = [{"delay": 1.0, "window": 0.35, "damage_pct": 1.3}]
+	slam.is_melee = true
+	slam.hits = [{"delay": 1.0, "window": 0.43, "damage_pct": 1.3}]
 	slam.action_text = "{attacker} slams the ground beneath {target}!"
 
 	var toss := AttackPattern.new()
 	toss.pattern_name = "Boulder Toss"
-	toss.hits = [{"delay": 0.7, "window": 0.3, "damage_pct": 1.0}]
+	toss.hits = [{"delay": 0.7, "window": 0.38, "damage_pct": 1.0}]
 	toss.action_text = "{attacker} hurls a boulder at {target}!"
 
-	golem.attack_patterns = [slam, toss]
+	var quake := AttackPattern.new()
+	quake.pattern_name = "Earthquake"
+	quake.is_team_attack = true
+	quake.hits = [
+		{"delay": 1.2, "window": 0.38, "damage_pct": 0.7},
+		{"delay": 0.5, "window": 0.36, "damage_pct": 0.6},
+	]
+	quake.action_text = "{attacker} shakes the earth beneath the party!"
+	golem.attack_sprite_map["Earthquake"] = "res://assets/sprites/battle/frames/golem_earthquake"
+
+	golem.attack_patterns = [slam, toss, quake]
 	return golem
 
 func _create_boss_data() -> EnemyData:
 	var boss := EnemyData.new()
 	boss.enemy_name = "Dark Knight"
-	boss.max_hp = 200
-	boss.attack = 22
-	boss.defense = 14
-	boss.magic_defense = 10
-	boss.speed = 11
+	boss.max_hp = 320
+	boss.attack = 28
+	boss.defense = 16
+	boss.magic_defense = 12
+	boss.speed = 13
 	boss.xp_reward = 100
 	boss.element_weakness = "lightning"
 	boss.element_resistance = "earth"
 	boss.battle_color = Color(0.15, 0.15, 0.2)
 	boss.boss = true
-	boss.sprite_scale = 1.5
+	boss.sprite_scale = 2.0
 	boss.sprite_path = "res://assets/sprites/battle/boss_dark_knight.png"
+	boss.sprite_idle = "res://assets/sprites/battle/frames/dark_knight_idle"
+	boss.attack_sprite_map = {
+		"Blade Combo": "res://assets/sprites/battle/frames/dark_knight_blade_combo",
+		"Delayed Thrust": "res://assets/sprites/battle/frames/dark_knight_delayed_thrust",
+		"Dark Cleave": "res://assets/sprites/battle/frames/dark_knight_dark_cleave",
+		"Shadow Rend": "res://assets/sprites/battle/frames/dark_knight_shadow_rend",
+	}
 
+	# 5-hit combo with a feint mixed in — hit 3 is a fake-out
 	var combo := AttackPattern.new()
 	combo.pattern_name = "Blade Combo"
+	combo.is_melee = true
 	combo.hits = [
-		{"delay": 0.6, "window": 0.3, "damage_pct": 0.25},
-		{"delay": 0.25, "window": 0.22, "damage_pct": 0.2},
-		{"delay": 0.25, "window": 0.22, "damage_pct": 0.2},
-		{"delay": 0.25, "window": 0.22, "damage_pct": 0.15},
-		{"delay": 0.5, "window": 0.25, "damage_pct": 0.2},
+		{"delay": 0.55, "window": 0.33, "damage_pct": 0.2},
+		{"delay": 0.22, "window": 0.28, "damage_pct": 0.2},
+		{"delay": 0.3, "window": 0.0, "damage_pct": 0.0},  # feint mid-combo
+		{"delay": 0.2, "window": 0.26, "damage_pct": 0.25},
+		{"delay": 0.45, "window": 0.30, "damage_pct": 0.35},
 	]
 	combo.action_text = "{attacker} unleashes a relentless Blade Combo on {target}!"
 
+	# Double feint into massive hit
 	var thrust := AttackPattern.new()
 	thrust.pattern_name = "Delayed Thrust"
+	thrust.is_melee = true
 	thrust.hits = [
-		{"delay": 0.3, "window": 0.0, "damage_pct": 0.0}, # feint
-		{"delay": 1.5, "window": 0.25, "damage_pct": 1.5},
+		{"delay": 0.3, "window": 0.0, "damage_pct": 0.0},  # feint 1
+		{"delay": 0.4, "window": 0.0, "damage_pct": 0.0},  # feint 2
+		{"delay": 1.2, "window": 0.30, "damage_pct": 1.8},  # real hit
 	]
-	thrust.action_text = "{attacker} feints, then thrusts at {target}!"
+	thrust.action_text = "{attacker} feints twice, then thrusts at {target}!"
 
+	# Team-wide attack: 3 hits targeting random party members
 	var cleave := AttackPattern.new()
 	cleave.pattern_name = "Dark Cleave"
-	cleave.is_aoe = true
-	cleave.hits = [{"delay": 0.5, "window": 0.3, "damage_pct": 0.8}]
-	cleave.action_text = "{attacker} unleashes Dark Cleave on the entire party!"
+	cleave.is_melee = true
+	cleave.is_team_attack = true
+	cleave.hits = [
+		{"delay": 0.6, "window": 0.32, "damage_pct": 0.5},
+		{"delay": 0.3, "window": 0.30, "damage_pct": 0.5},
+		{"delay": 0.4, "window": 0.30, "damage_pct": 0.6},
+	]
+	cleave.action_text = "{attacker} unleashes Dark Cleave across the party!"
 
-	boss.attack_patterns = [combo, thrust, cleave]
+	# Single-target fast 3-hit with tight windows
+	var rend := AttackPattern.new()
+	rend.pattern_name = "Shadow Rend"
+	rend.is_melee = true
+	rend.hits = [
+		{"delay": 0.4, "window": 0.28, "damage_pct": 0.4},
+		{"delay": 0.2, "window": 0.26, "damage_pct": 0.4},
+		{"delay": 0.3, "window": 0.26, "damage_pct": 0.5},
+	]
+	rend.action_text = "{attacker} tears through {target} with Shadow Rend!"
+
+	# Team-wide: feint into multi-hit chaos
+	var onslaught := AttackPattern.new()
+	onslaught.pattern_name = "Abyssal Onslaught"
+	onslaught.is_team_attack = true
+	onslaught.hits = [
+		{"delay": 0.4, "window": 0.0, "damage_pct": 0.0},   # feint
+		{"delay": 0.35, "window": 0.28, "damage_pct": 0.35},
+		{"delay": 0.25, "window": 0.26, "damage_pct": 0.35},
+		{"delay": 0.25, "window": 0.26, "damage_pct": 0.35},
+		{"delay": 0.5, "window": 0.30, "damage_pct": 0.5},
+	]
+	onslaught.action_text = "{attacker} unleashes Abyssal Onslaught on the party!"
+	boss.attack_sprite_map["Abyssal Onslaught"] = "res://assets/sprites/battle/frames/dark_knight_onslaught"
+
+	boss.attack_patterns = [combo, thrust, cleave, rend, onslaught]
 	return boss
 
 func _create_goblin_group() -> Array:
@@ -262,36 +339,31 @@ func _create_boss_group() -> Array:
 # ── Map Rendering ────────────────────────────────────────────────────
 
 func _render_map() -> void:
-	var ground := Node2D.new()
-	ground.name = "Ground"
-	add_child(ground)
+	_map_image = Image.create(MAP_COLS * TILE_SIZE, MAP_ROWS * TILE_SIZE, false, Image.FORMAT_RGBA8)
 
 	for r in range(MAP_ROWS):
 		for c in range(MAP_COLS):
-			var rect := ColorRect.new()
-			rect.size = Vector2(TILE_SIZE, TILE_SIZE)
-			rect.position = Vector2(c * TILE_SIZE, r * TILE_SIZE)
-
+			var color: Color
 			if map_grid[r][c] == 1:
-				rect.color = COLOR_WALL
+				color = COLOR_WALL
 			else:
-				rect.color = COLOR_FLOOR
-				# Check if this is an encounter zone
-				var in_encounter := false
+				color = COLOR_FLOOR
 				for enc in encounter_zones:
 					if not enc.defeated:
 						for gp in enc.grid_positions:
 							if gp.x == c and gp.y == r:
-								if enc.is_boss:
-									rect.color = COLOR_BOSS_FLOOR
-								else:
-									rect.color = COLOR_ENCOUNTER
-								in_encounter = true
+								color = COLOR_BOSS_FLOOR if enc.is_boss else COLOR_ENCOUNTER
 								break
-					if in_encounter:
-						break
 
-			ground.add_child(rect)
+			_fill_tile(_map_image, c, r, color)
+
+	_map_texture = ImageTexture.create_from_image(_map_image)
+	_map_sprite = Sprite2D.new()
+	_map_sprite.name = "Ground"
+	_map_sprite.texture = _map_texture
+	_map_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_map_sprite.centered = false
+	add_child(_map_sprite)
 
 	# Room labels
 	_add_room_label("Start Chamber", Vector2i(10, 1))
@@ -299,6 +371,11 @@ func _render_map() -> void:
 	_add_room_label("Wraith Corridor", Vector2i(9, 19))
 	_add_room_label("Golem Chamber", Vector2i(9, 26))
 	_add_room_label("Boss Arena", Vector2i(9, 32))
+
+func _fill_tile(img: Image, col: int, row: int, color: Color) -> void:
+	var x0: int = col * TILE_SIZE
+	var y0: int = row * TILE_SIZE
+	img.fill_rect(Rect2i(x0, y0, TILE_SIZE, TILE_SIZE), color)
 
 func _add_room_label(text: String, grid_pos: Vector2i) -> void:
 	var lbl := Label.new()
@@ -403,24 +480,14 @@ func on_battle_won(encounter_id: int) -> void:
 			return
 
 func _update_encounter_visuals() -> void:
-	var ground: Node2D = get_node("Ground")
-	var child_index := 0
-	for r in range(MAP_ROWS):
-		for c in range(MAP_COLS):
-			var rect: ColorRect = ground.get_child(child_index) as ColorRect
-			if map_grid[r][c] == 0:
-				var in_active_encounter := false
-				for enc in encounter_zones:
-					if not enc.defeated:
-						for gp in enc.grid_positions:
-							if gp.x == c and gp.y == r:
-								in_active_encounter = true
-								break
-					if in_active_encounter:
-						break
-				if not in_active_encounter:
-					rect.color = COLOR_FLOOR
-			child_index += 1
+	if _map_image == null or _map_texture == null:
+		return
+	# Only repaint tiles belonging to defeated encounters
+	for enc in encounter_zones:
+		if enc.defeated:
+			for gp in enc.grid_positions:
+				_fill_tile(_map_image, gp.x, gp.y, COLOR_FLOOR)
+	_map_texture.update(_map_image)
 
 func _show_game_complete() -> void:
 	player_node.frozen = true
