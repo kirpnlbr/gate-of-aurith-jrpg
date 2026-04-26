@@ -3,6 +3,12 @@ extends CanvasLayer
 ## Debug / dev menu. Toggle with F1. Provides cheats and a test arena
 ## for invoking battles with hand-picked enemy groups.
 
+const AUDIO_STEP_DB := 3.0
+const AUDIO_BUS_MASTER := "Master"
+const AUDIO_BUS_MUSIC := "Music"
+const AUDIO_BUS_SFX := "SFX"
+const AUDIO_BUS_UI := "UI"
+
 var main_node: Node2D = null
 var _panel: PanelContainer = null
 var _vbox: VBoxContainer = null
@@ -14,6 +20,7 @@ var _arena_enemies: Array = [] # Array of EnemyData to fight
 var _arena_scroll: ScrollContainer = null
 var _arena_list_label: Label = null
 var _bg: ColorRect = null
+var _audio_status_label: Label = null
 
 # ── Setup ────────────────────────────────────────────────────────────
 
@@ -96,6 +103,33 @@ func _build_ui() -> void:
 	_add_button("Toggle God Mode", _on_toggle_god_mode)
 	_add_separator()
 
+	# ── Audio Section ────────────────────────────────────────────────
+	_add_label("AUDIO", 16, Color(0.8, 0.6, 0.2))
+	_audio_status_label = _add_label("", 12, Color(0.75, 0.85, 0.75))
+	_refresh_audio_status()
+	_add_label("Shortcuts: Ctrl+- quieter, Ctrl+= louder, Ctrl+0 reset", 11, Color(0.6, 0.6, 0.75))
+
+	var master_controls := HBoxContainer.new()
+	_vbox.add_child(master_controls)
+	_add_inline_button(master_controls, "Master -", _on_master_volume_down)
+	_add_inline_button(master_controls, "Master +", _on_master_volume_up)
+	_add_inline_button(master_controls, "Mute All", _on_toggle_master_mute)
+
+	var music_controls := HBoxContainer.new()
+	_vbox.add_child(music_controls)
+	_add_inline_button(music_controls, "Music -", _on_music_volume_down)
+	_add_inline_button(music_controls, "Music +", _on_music_volume_up)
+
+	var sfx_controls := HBoxContainer.new()
+	_vbox.add_child(sfx_controls)
+	_add_inline_button(sfx_controls, "SFX -", _on_sfx_volume_down)
+	_add_inline_button(sfx_controls, "SFX +", _on_sfx_volume_up)
+	_add_inline_button(sfx_controls, "UI -", _on_ui_volume_down)
+	_add_inline_button(sfx_controls, "UI +", _on_ui_volume_up)
+
+	_add_button("Reset Audio Defaults", _on_reset_audio)
+	_add_separator()
+
 	# ── Overworld Section ────────────────────────────────────────────
 	_add_label("OVERWORLD", 16, Color(0.8, 0.6, 0.2))
 	_add_button("Skip All Encounters", _on_skip_all_encounters)
@@ -175,6 +209,15 @@ func _add_button(text: String, callback: Callable) -> Button:
 	_vbox.add_child(btn)
 	return btn
 
+func _add_inline_button(parent: BoxContainer, text: String, callback: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = Vector2(96, 0)
+	btn.add_theme_font_size_override("font_size", 12)
+	btn.pressed.connect(callback)
+	parent.add_child(btn)
+	return btn
+
 func _add_separator() -> void:
 	var sep := HSeparator.new()
 	sep.add_theme_constant_override("separation", 8)
@@ -209,6 +252,49 @@ func _on_max_items() -> void:
 func _on_toggle_god_mode() -> void:
 	_god_mode = not _god_mode
 	_flash_message("God Mode: " + ("ON" if _god_mode else "OFF"))
+
+func _refresh_audio_status() -> void:
+	if _audio_status_label:
+		_audio_status_label.text = Sfx.get_volume_summary()
+
+func _adjust_audio(bus_name: String, delta_db: float) -> void:
+	var volume_db := Sfx.adjust_bus_volume_db(bus_name, delta_db)
+	_refresh_audio_status()
+	_flash_message("%s volume: %+.1f dB" % [bus_name, volume_db])
+
+func _on_master_volume_down() -> void:
+	_adjust_audio(AUDIO_BUS_MASTER, -AUDIO_STEP_DB)
+
+func _on_master_volume_up() -> void:
+	_adjust_audio(AUDIO_BUS_MASTER, AUDIO_STEP_DB)
+
+func _on_toggle_master_mute() -> void:
+	var muted := Sfx.toggle_bus_mute(AUDIO_BUS_MASTER)
+	_refresh_audio_status()
+	_flash_message("Master mute: " + ("ON" if muted else "OFF"))
+
+func _on_music_volume_down() -> void:
+	_adjust_audio(AUDIO_BUS_MUSIC, -AUDIO_STEP_DB)
+
+func _on_music_volume_up() -> void:
+	_adjust_audio(AUDIO_BUS_MUSIC, AUDIO_STEP_DB)
+
+func _on_sfx_volume_down() -> void:
+	_adjust_audio(AUDIO_BUS_SFX, -AUDIO_STEP_DB)
+
+func _on_sfx_volume_up() -> void:
+	_adjust_audio(AUDIO_BUS_SFX, AUDIO_STEP_DB)
+
+func _on_ui_volume_down() -> void:
+	_adjust_audio(AUDIO_BUS_UI, -AUDIO_STEP_DB)
+
+func _on_ui_volume_up() -> void:
+	_adjust_audio(AUDIO_BUS_UI, AUDIO_STEP_DB)
+
+func _on_reset_audio() -> void:
+	Sfx.reset_bus_volumes()
+	_refresh_audio_status()
+	_flash_message("Audio reset to defaults")
 
 # ── Overworld Callbacks ──────────────────────────────────────────────
 

@@ -86,27 +86,15 @@ func _input(event: InputEvent) -> void:
 		_result_received = true
 		if _shrink_tween and _shrink_tween.is_running():
 			_shrink_tween.kill()
-		var distance: float = absf(_ring_radius - RING_TARGET)
-		var max_distance := RING_START - RING_TARGET
-		if distance < max_distance * 0.4:
-			_show_result_flash(Color.GREEN)
-			parry_input_received.emit("parry")
-		else:
-			_show_result_flash(Color.RED)
-			parry_input_received.emit("miss")
+		_show_result_flash(Color.GREEN)
+		parry_input_received.emit("parry")
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("dodge"):
 		_result_received = true
 		if _shrink_tween and _shrink_tween.is_running():
 			_shrink_tween.kill()
-		var distance: float = absf(_ring_radius - RING_TARGET)
-		var max_distance := RING_START - RING_TARGET
-		if distance < max_distance * 0.7:
-			_show_result_flash(Color.CYAN)
-			parry_input_received.emit("dodge")
-		else:
-			_show_result_flash(Color.RED)
-			parry_input_received.emit("miss")
+		_show_result_flash(Color.CYAN)
+		parry_input_received.emit("dodge")
 		get_viewport().set_input_as_handled()
 
 func _draw() -> void:

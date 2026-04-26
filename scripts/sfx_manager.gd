@@ -4,8 +4,23 @@ extends Node
 ## Autoloaded as "Sfx" — call Sfx.play("hit_physical") from anywhere.
 
 const SFX_BASE := "res://assets/audio/sfx/"
+const BUS_MASTER := "Master"
+const BUS_MUSIC := "Music"
+const BUS_SFX := "SFX"
+const BUS_UI := "UI"
+const MIN_VOLUME_DB := -40.0
+const MAX_VOLUME_DB := 6.0
+const DEFAULT_BUS_VOLUMES_DB := {
+	BUS_MASTER: -8.0,
+	BUS_MUSIC: -12.0,
+	BUS_SFX: -5.0,
+	BUS_UI: -7.0,
+}
+const DEBUG_VOLUME_STEP_DB := 3.0
 
 # ── Audio Bus Layout ─────────────────────────────────────────────────
+var _bus_master: int = -1
+var _bus_music: int = -1
 var _bus_sfx: int = -1
 var _bus_ui: int = -1
 
@@ -134,21 +149,25 @@ const ELEMENT_IMPACT_MAP: Dictionary = {
 }
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_setup_buses()
+	reset_bus_volumes()
 	_preload_all()
 
 func _setup_buses() -> void:
-	if AudioServer.get_bus_index("SFX") == -1:
-		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.bus_count - 1, "SFX")
-		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
-	_bus_sfx = AudioServer.get_bus_index("SFX")
+	_bus_master = AudioServer.get_bus_index(BUS_MASTER)
+	_bus_music = _ensure_bus(BUS_MUSIC, BUS_MASTER)
+	_bus_sfx = _ensure_bus(BUS_SFX, BUS_MASTER)
+	_bus_ui = _ensure_bus(BUS_UI, BUS_MASTER)
 
-	if AudioServer.get_bus_index("UI") == -1:
+func _ensure_bus(bus_name: String, send_name: String) -> int:
+	var bus_index := AudioServer.get_bus_index(bus_name)
+	if bus_index == -1:
 		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.bus_count - 1, "UI")
-		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
-	_bus_ui = AudioServer.get_bus_index("UI")
+		bus_index = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(bus_index, bus_name)
+	AudioServer.set_bus_send(bus_index, send_name)
+	return bus_index
 
 func _preload_all() -> void:
 	for key in CATALOG:
@@ -200,15 +219,75 @@ func set_bus_volume(bus_name: String, linear: float) -> void:
 	if idx >= 0:
 		AudioServer.set_bus_volume_db(idx, linear_to_db(linear))
 
+func set_bus_volume_db(bus_name: String, volume_db: float) -> void:
+	var idx: int = AudioServer.get_bus_index(bus_name)
+	if idx >= 0:
+		AudioServer.set_bus_volume_db(idx, clampf(volume_db, MIN_VOLUME_DB, MAX_VOLUME_DB))
+
+func get_bus_volume_db(bus_name: String) -> float:
+	var idx: int = AudioServer.get_bus_index(bus_name)
+	if idx >= 0:
+		return AudioServer.get_bus_volume_db(idx)
+	return 0.0
+
+func adjust_bus_volume_db(bus_name: String, delta_db: float) -> float:
+	var next_volume := get_bus_volume_db(bus_name) + delta_db
+	set_bus_volume_db(bus_name, next_volume)
+	return get_bus_volume_db(bus_name)
+
 func set_bus_mute(bus_name: String, muted: bool) -> void:
 	var idx: int = AudioServer.get_bus_index(bus_name)
 	if idx >= 0:
 		AudioServer.set_bus_mute(idx, muted)
 
+func is_bus_muted(bus_name: String) -> bool:
+	var idx: int = AudioServer.get_bus_index(bus_name)
+	if idx >= 0:
+		return AudioServer.is_bus_mute(idx)
+	return false
+
+func toggle_bus_mute(bus_name: String) -> bool:
+	var muted := not is_bus_muted(bus_name)
+	set_bus_mute(bus_name, muted)
+	return muted
+
+func reset_bus_volumes() -> void:
+	for bus_name in DEFAULT_BUS_VOLUMES_DB:
+		set_bus_volume_db(bus_name, DEFAULT_BUS_VOLUMES_DB[bus_name])
+		set_bus_mute(bus_name, false)
+
+func get_volume_summary() -> String:
+	return "Master %sdB | Music %sdB | SFX %sdB | UI %sdB" % [
+		_format_db(get_bus_volume_db(BUS_MASTER)),
+		_format_db(get_bus_volume_db(BUS_MUSIC)),
+		_format_db(get_bus_volume_db(BUS_SFX)),
+		_format_db(get_bus_volume_db(BUS_UI)),
+	]
+
 func _get_bus_name(sound_name: String) -> String:
 	if sound_name.begins_with("menu_") or sound_name in ["victory", "defeat", "battle_encounter", "item_pickup", "item_use", "xp_gain"]:
-		return "UI"
-	return "SFX"
+		return BUS_UI
+	return BUS_SFX
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed:
+		match event.keycode:
+			KEY_MINUS:
+				_print_volume_change(BUS_MASTER, adjust_bus_volume_db(BUS_MASTER, -DEBUG_VOLUME_STEP_DB))
+				get_viewport().set_input_as_handled()
+			KEY_EQUAL:
+				_print_volume_change(BUS_MASTER, adjust_bus_volume_db(BUS_MASTER, DEBUG_VOLUME_STEP_DB))
+				get_viewport().set_input_as_handled()
+			KEY_0:
+				reset_bus_volumes()
+				print("Audio reset: %s" % get_volume_summary())
+				get_viewport().set_input_as_handled()
+
+func _format_db(volume_db: float) -> String:
+	return "%+.1f" % volume_db
+
+func _print_volume_change(bus_name: String, volume_db: float) -> void:
+	print("%s volume: %sdB" % [bus_name, _format_db(volume_db)])
 
 # ── BGM System ───────────────────────────────────────────────────────
 
@@ -242,7 +321,7 @@ func play_bgm(track_name: String, volume_db: float = -6.0, fade_in: float = 0.5)
 	elif stream is AudioStreamMP3:
 		stream.loop = true
 	_bgm_player.stream = stream
-	_bgm_player.bus = "Master"
+	_bgm_player.bus = BUS_MUSIC
 	_bgm_player.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(_bgm_player)
 	_current_bgm = track_name
