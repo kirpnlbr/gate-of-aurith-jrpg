@@ -181,6 +181,14 @@ func _try_move(dir: Vector2i) -> void:
 			_apply_facing(leader)
 			return
 
+	# Trigger encounter before stepping onto the enemy's tile so the
+	# party never visually overlaps the enemy sprite.
+	if overworld_node.has_method("try_trigger_encounter_at"):
+		leader.facing = _dir_to_facing(dir)
+		_apply_facing(leader)
+		if overworld_node.try_trigger_encounter_at(target):
+			return
+
 	Sfx.play("footstep", -10.0, randf_range(0.9, 1.1))
 
 	# Collect old positions before any movement starts
@@ -233,7 +241,9 @@ func _tick_member(m: Dictionary, delta: float) -> void:
 		m.walk_frame = 0
 		_apply_facing(m)
 
-		# Trigger overworld events only for leader
+		# Trigger overworld events only for leader (encounters now fire
+		# from _try_move before movement begins, but keep this hook for
+		# any other tile-entry events).
 		if m == _members[0]:
 			overworld_node.on_player_moved(m.grid_pos)
 	else:

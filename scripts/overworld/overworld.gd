@@ -523,6 +523,11 @@ func is_walkable(col: int, row: int) -> bool:
 	return map_grid[row][col] == 0
 
 func on_player_moved(grid_pos: Vector2i) -> void:
+	# Encounters now trigger via try_trigger_encounter_at before movement,
+	# but leave this hook in place for future tile-entry events.
+	pass
+
+func try_trigger_encounter_at(grid_pos: Vector2i) -> bool:
 	for enc in encounter_zones:
 		if enc.defeated:
 			continue
@@ -531,7 +536,8 @@ func on_player_moved(grid_pos: Vector2i) -> void:
 				player_node.frozen = true
 				Sfx.play("battle_encounter", -5.0)
 				main_node.start_battle(enc.id, enc.enemy_group, enc.is_boss)
-				return
+				return true
+	return false
 
 func on_battle_won(encounter_id: int) -> void:
 	for enc in encounter_zones:
