@@ -181,6 +181,8 @@ func _process(delta: float) -> void:
 				var ch_dict: Dictionary = party[i]
 				if int(ch_dict.current_hp) <= 0:
 					continue
+				if ch_dict.get("defending", false):
+					continue  # hold on defend frame while defending
 				if not ch_dict.has("animations"):
 					continue
 				var anims: Dictionary = ch_dict.animations
@@ -195,6 +197,8 @@ func _process(delta: float) -> void:
 			for e in enemies:
 				if int(e.current_hp) <= 0:
 					continue
+				if e.get("defending", false):
+					continue  # hold on defend frame while defending
 				if not e.has("animations"):
 					continue
 				var anims: Dictionary = e.animations
@@ -265,12 +269,7 @@ func _build_battle_scene() -> void:
 	_battle_layer.add_child(_sprite_root)
 
 	# Background
-	var bg := ColorRect.new()
-	bg.color = Color(0.08, 0.1, 0.18)
-	bg.size = _vp_size
-	_battle_layer.add_child(bg)
-	# Move bg behind sprites
-	_battle_layer.move_child(bg, 0)
+	_build_battle_background()
 
 	# Party sprites (right side)
 	for i in range(party.size()):
@@ -295,11 +294,15 @@ func _build_battle_scene() -> void:
 				counter_path = data.sprite_counter_alt
 		var parry_frames: Array = _load_frames_from_folder(parry_path)
 		var counter_frames: Array = _load_frames_from_folder(counter_path)
+		var defend_frames: Array = _load_frames_from_folder(data.sprite_defend)
+		var defend_alt_frames: Array = _load_frames_from_folder(data.sprite_defend_alt)
 		ch["animations"] = {
 			"idle": idle_frames,
 			"attack": attack_frames,
 			"parry": parry_frames,
 			"counter": counter_frames,
+			"defend": defend_frames,
+			"defend_alt": defend_alt_frames,
 		}
 		# Set initial texture from first idle frame, or fallback to colored rect
 		ch["target_height"] = PARTY_SPRITE_HEIGHT
@@ -343,10 +346,13 @@ func _build_battle_scene() -> void:
 			if edata.attack_sprite_map.has(p.pattern_name):
 				var folder: String = edata.attack_sprite_map[p.pattern_name]
 				attack_anims[p.pattern_name] = _load_frames_from_folder(folder)
+		var enemy_defend_frames: Array = _load_frames_from_folder(edata.sprite_defend)
 		edict["animations"] = {
 			"idle": enemy_idle_frames,
 			"attack_patterns": attack_anims,
+			"defend": enemy_defend_frames,
 		}
+		edict["defending"] = false
 
 		# Set initial texture: prefer idle frames, fallback to static sprite
 		var enemy_target_h: float = ENEMY_SPRITE_BASE_HEIGHT * edata.sprite_scale
@@ -571,6 +577,89 @@ func _build_battle_scene() -> void:
 
 	parry_system.setup(parry_indicator, action_text_box, effects)
 	parry_system.parry_phase_complete.connect(_on_parry_phase_complete)
+
+func _build_battle_background() -> void:
+	const TILE := 48
+	const BASE := "res://assets/sprites/battle/bg/"
+	# Layout analysis (960×540 viewport):
+	#   Party  (x=180): centers at y≈140, 265, 389 → feet at y≈190, 315, 439
+	#   Enemies (x=700): 2 goblins feet at y≈226, 356; boss single at y≈291
+	# Characters span y=190–440, which is a top-down angled perspective (like Chrono Trigger).
+	# Correct treatment: floor tiles fill most of the screen, thin back-wall strip at top only.
+	# Ground shadows beneath each sprite are what actually anchor them — without them, any
+	# background texture still makes characters look like they're floating.
+	const WALL_ROWS := 2  # y=0–96: back wall of the dungeon room
+
+	var wall_img := Image.load_from_file(BASE + "wall_mid.png")
+	wall_img.resize(TILE, TILE, Image.INTERPOLATE_NEAREST)
+
+	var floor_imgs: Array[Image] = []
+	for i in range(1, 5):
+		var fi := Image.load_from_file(BASE + "floor_%d.png" % i)
+		fi.resize(TILE, TILE, Image.INTERPOLATE_NEAREST)
+		floor_imgs.append(fi)
+
+	var banner_img := Image.load_from_file(BASE + ("wall_banner_red.png" if is_boss else "wall_banner_blue.png"))
+	banner_img.resize(TILE, TILE, Image.INTERPOLATE_NEAREST)
+
+	var w := int(_vp_size.x)
+	var h := int(_vp_size.y)
+	var bg_image := Image.create(w, h, false, Image.FORMAT_RGBA8)
+
+	var cols := int(ceil(float(w) / TILE))
+	var rows := int(ceil(float(h) / TILE))
+
+	for r in range(rows):
+		for c in range(cols):
+			var tile: Image = wall_img if r < WALL_ROWS else floor_imgs[(c * 3 + r * 7) % floor_imgs.size()]
+			bg_image.blit_rect(tile, Rect2i(0, 0, TILE, TILE), Vector2i(c * TILE, r * TILE))
+
+	# Banners hang on the wall strip at row 1 (y=48), evenly spaced
+	for bc in [3, 9, 15]:
+		bg_image.blit_rect(banner_img, Rect2i(0, 0, TILE, TILE), Vector2i(bc * TILE, TILE))
+
+	# ── Ground shadows ───────────────────────────────────────────────
+	# Oval shadows are the key to making sprites look grounded on a tiled floor.
+	var shadow := Color(0.0, 0.0, 0.0, 0.55)
+
+	# Party: 3 characters, sprite height = PARTY_SPRITE_HEIGHT, centered at PARTY_Y_POSITIONS
+	for i in range(party.size()):
+		var feet_y := int(PARTY_Y_POSITIONS[i] + PARTY_SPRITE_HEIGHT * 0.47)
+		_draw_oval_shadow(bg_image, int(PARTY_X), feet_y, 26, 7, shadow)
+
+	# Enemies: positions computed from ENEMY_Y_START / ENEMY_SPACING (set by _compute_layout)
+	var e_y0 := ENEMY_Y_START_SINGLE if enemies.size() == 1 else ENEMY_Y_START
+	for i in range(enemies.size()):
+		var edata: EnemyData = enemies[i]["data"] as EnemyData
+		var sprite_h := ENEMY_SPRITE_BASE_HEIGHT * edata.sprite_scale
+		var feet_y := int(e_y0 + i * ENEMY_SPACING + sprite_h * 0.47)
+		var rx := int(18.0 * edata.sprite_scale)
+		_draw_oval_shadow(bg_image, int(ENEMY_X), feet_y, rx, 6, shadow)
+
+	var tex := ImageTexture.create_from_image(bg_image)
+	var bg_sprite := Sprite2D.new()
+	bg_sprite.texture = tex
+	bg_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bg_sprite.centered = false
+	bg_sprite.position = Vector2.ZERO
+	bg_sprite.modulate = Color(0.62, 0.46, 0.72) if is_boss else Color(0.88, 0.88, 0.92)
+	_battle_layer.add_child(bg_sprite)
+	_battle_layer.move_child(bg_sprite, 0)
+
+func _draw_oval_shadow(img: Image, cx: int, cy: int, rx: int, ry: int, color: Color) -> void:
+	for dy in range(-ry, ry + 1):
+		for dx in range(-rx, rx + 1):
+			var dist := float(dx * dx) / float(rx * rx) + float(dy * dy) / float(ry * ry)
+			if dist > 1.0:
+				continue
+			var px := cx + dx
+			var py := cy + dy
+			if px < 0 or px >= img.get_width() or py < 0 or py >= img.get_height():
+				continue
+			# Smooth fade toward the edge of the ellipse
+			var alpha := (1.0 - dist) * color.a
+			var p := img.get_pixel(px, py)
+			img.set_pixel(px, py, Color(p.r * (1.0 - alpha), p.g * (1.0 - alpha), p.b * (1.0 - alpha), p.a))
 
 func _make_bar(max_val: float, cur_val: float, bar_color: Color, bg_color: Color) -> ProgressBar:
 	var bar := ProgressBar.new()
@@ -862,10 +951,24 @@ func _do_turn_start() -> void:
 	if turn_order.is_round_over():
 		# New round — tick down buffs
 		_tick_buffs()
-		# Reset defend flags
-		for ch in party:
-			ch.defending = false
+		# NOTE: defending is NOT reset here. It persists until the entity's
+		# next turn so they visually hold the defensive stance and continue
+		# to receive the DEF/MDEF bonus until they next act.
 		turn_order.calculate(party, enemies)
+		# Check if DoT killed anyone before proceeding
+		var dot_killed := false
+		for e in enemies:
+			if e.current_hp <= 0 and e.sprite and e.sprite.visible:
+				dot_killed = true
+				break
+		if not dot_killed:
+			for p in party:
+				if p.current_hp <= 0 and p.sprite and p.sprite.modulate.a > 0.3:
+					dot_killed = true
+					break
+		if dot_killed:
+			_enter_state(BattleState.CHECK_DEATH)
+			return
 
 	current_turn = turn_order.get_next()
 	if current_turn.is_empty():
@@ -873,6 +976,11 @@ func _do_turn_start() -> void:
 
 	# Show turn indicator on active entity
 	var active_entity: Dictionary = current_turn.entity
+	# Clear defending stance now that this entity is taking its next turn —
+	# the bonus and held sprite expire when they act again.
+	if active_entity.get("defending", false):
+		active_entity.defending = false
+		_swap_to_idle_sprite(active_entity)
 	if active_entity.sprite:
 		_show_turn_indicator(active_entity.sprite)
 
@@ -1101,7 +1209,26 @@ func _execute_defend() -> void:
 	ch.defending = true
 	Sfx.play("defend")
 	action_text_box.display("%s takes a defensive stance! Damage reduced this round!" % ch.data.character_name)
-	await get_tree().create_timer(ACTION_TEXT_DELAY).timeout
+	var data: CharacterData = ch.data as CharacterData
+	var anim_key := "defend"
+	var hold_frame: int = data.defend_hold_frame
+	if data.character_name == "Gustave" and gustave_stance == "greatshield":
+		anim_key = "defend_alt"
+		hold_frame = data.defend_hold_frame_alt
+	await _play_animation_to_frame(ch, anim_key, hold_frame, 0.6)
+	# Sprite stays on hold_frame — no _swap_to_idle_sprite here
+	await get_tree().create_timer(ACTION_TEXT_DELAY * 0.5).timeout
+	_enter_state(BattleState.CHECK_DEATH)
+
+func _execute_enemy_defend(enemy: Dictionary) -> void:
+	enemy.defending = true
+	Sfx.play("defend")
+	var name: String = enemy.data.enemy_name
+	action_text_box.display("%s braces for impact! Its defenses are raised!" % name)
+	var edata: EnemyData = enemy.data as EnemyData
+	await _play_animation_to_frame(enemy, "defend", edata.defend_hold_frame, 0.8)
+	# Sprite stays on hold_frame until defending is cleared at round start
+	await get_tree().create_timer(ACTION_TEXT_DELAY * 0.5).timeout
 	_enter_state(BattleState.CHECK_DEATH)
 
 func _execute_stance_switch() -> void:
@@ -1523,6 +1650,11 @@ func _do_enemy_turn() -> void:
 		return
 
 	var action := BattleAI.choose_action(enemy, party)
+
+	if action.get("defend", false):
+		await _execute_enemy_defend(enemy)
+		return
+
 	var pattern: AttackPattern = action.pattern
 	var target: Dictionary = action.target
 
@@ -2090,6 +2222,8 @@ func _get_effective_mdef(entity: Dictionary) -> int:
 			base_mdef = int(base_mdef * 1.3)
 		if entity.buffs.has("debuff_def") or entity.buffs.has("soaked"):
 			base_mdef = int(base_mdef * 0.85)
+	if entity.has("defending") and entity.defending:
+		base_mdef = int(base_mdef * 1.5)
 	return base_mdef
 
 func _sync_to_party_state() -> void:
@@ -2146,6 +2280,26 @@ func _play_animation(ch: Dictionary, anim_key: String, duration: float = 0.8) ->
 	for f_idx in range(frame_count):
 		_set_entity_texture(ch, frame_textures[f_idx])
 		await get_tree().create_timer(frame_duration).timeout
+
+func _play_animation_to_frame(ch: Dictionary, anim_key: String, hold_frame: int, duration: float = 0.6) -> void:
+	if ch.sprite == null or not ch.has("animations"):
+		await get_tree().create_timer(duration).timeout
+		return
+	var anims := ch.get("animations") as Dictionary
+	if not anims.has(anim_key) or not (anims.get(anim_key) is Array):
+		await get_tree().create_timer(duration).timeout
+		return
+	var frame_textures: Array = anims.get(anim_key) as Array
+	if frame_textures.is_empty():
+		await get_tree().create_timer(duration).timeout
+		return
+	var end_idx: int = clampi(hold_frame, 0, frame_textures.size() - 1)
+	var frames_to_play: int = end_idx + 1
+	var frame_duration: float = duration / frames_to_play
+	for i in range(frames_to_play):
+		_set_entity_texture(ch, frame_textures[i])
+		await get_tree().create_timer(frame_duration).timeout
+	# Sprite is now on hold_frame and remains there until _swap_to_idle_sprite is called
 
 func _play_skill_animation(ch: Dictionary, skill_name: String, duration: float = 1.2) -> void:
 	var data: CharacterData = ch.data as CharacterData

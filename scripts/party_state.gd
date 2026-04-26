@@ -28,6 +28,8 @@ func _init_characters() -> void:
 	mage_data.sprite_attack = "res://assets/sprites/battle/frames/mage_attack"
 	mage_data.sprite_parry = "res://assets/sprites/battle/frames/mage_parry"
 	mage_data.sprite_counter = "res://assets/sprites/battle/frames/mage_counter"
+	mage_data.sprite_defend = "res://assets/sprites/battle/frames/mage_defend"
+	mage_data.defend_hold_frame = 5
 	mage_data.sprite_skill = "res://assets/sprites/battle/frames/mage_fireball"
 	mage_data.skill_sprite_map = {
 		"Fireball": "res://assets/sprites/battle/frames/mage_fireball",
@@ -57,6 +59,10 @@ func _init_characters() -> void:
 	gustave_data.sprite_parry_alt = "res://assets/sprites/battle/frames/gustave_parry_alt"
 	gustave_data.sprite_counter = "res://assets/sprites/battle/frames/gustave_counter"
 	gustave_data.sprite_counter_alt = "res://assets/sprites/battle/frames/gustave_counter_alt"
+	gustave_data.sprite_defend = "res://assets/sprites/battle/frames/gustave_defend"
+	gustave_data.sprite_defend_alt = "res://assets/sprites/battle/frames/gustave_defend_alt"
+	gustave_data.defend_hold_frame = 5
+	gustave_data.defend_hold_frame_alt = 7
 	gustave_data.sprite_skill = "res://assets/sprites/battle/frames/gustave_attack"
 	gustave_data.skill_sprite_map = {
 		"Heavy Slash": "res://assets/sprites/battle/frames/gustave_heavy_slash",
@@ -84,6 +90,8 @@ func _init_characters() -> void:
 	sage_data.sprite_attack = "res://assets/sprites/battle/frames/sage_attack"
 	sage_data.sprite_parry = "res://assets/sprites/battle/frames/sage_parry"
 	sage_data.sprite_counter = "res://assets/sprites/battle/frames/sage_counter"
+	sage_data.sprite_defend = "res://assets/sprites/battle/frames/sage_defend"
+	sage_data.defend_hold_frame = 6
 	sage_data.sprite_skill = "res://assets/sprites/battle/frames/sage_attack"
 	sage_data.skill_sprite_map = {
 		"Phoenix Manifestation": "res://assets/sprites/battle/frames/sage_phoenix",
@@ -123,7 +131,7 @@ func _init_items() -> void:
 	ether.target_type = "single_ally"
 	ether.description = "Restore 15 AP to one ally."
 	ether.action_text = "{user} uses Ether on {target}! Restored {value} AP!"
-	items.append({"data": ether, "quantity": 2})
+	items.append({"data": ether, "quantity": 4})
 
 	var revive := ItemData.new()
 	revive.item_name = "Revive Crystal"

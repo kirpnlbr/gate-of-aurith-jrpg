@@ -1,7 +1,12 @@
 class_name BattleAI
 extends RefCounted
 
+const DEFEND_CHANCE := 0.25
+
 static func choose_action(enemy: Dictionary, party: Array[Dictionary]) -> Dictionary:
+	# Don't defend two turns in a row
+	if not enemy.get("defending", false) and randf() < DEFEND_CHANCE:
+		return {"pattern": null, "target": {}, "defend": true}
 	if enemy.data.attack_patterns.is_empty():
 		return {"pattern": null, "target": {}}
 	var pattern: AttackPattern = enemy.data.attack_patterns.pick_random()

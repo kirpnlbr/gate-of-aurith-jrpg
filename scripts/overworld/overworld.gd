@@ -15,12 +15,11 @@ var _map_image: Image = null
 var _map_texture: ImageTexture = null
 var _map_sprite: Sprite2D = null
 
-# Colors
-const COLOR_FLOOR := Color(0.18, 0.18, 0.25)
-const COLOR_WALL := Color(0.08, 0.08, 0.12)
-const COLOR_DOOR := Color(0.25, 0.2, 0.15)
-const COLOR_ENCOUNTER := Color(0.3, 0.12, 0.12)
-const COLOR_BOSS_FLOOR := Color(0.2, 0.1, 0.1)
+# Tile images (loaded at render time, scaled to TILE_SIZE)
+var _tile_floors: Array = []   # floor_1..floor_4, picked by position for variety
+var _tile_wall: Image = null
+var _tile_encounter: Image = null   # floor tinted red — danger zones
+var _tile_boss: Image = null        # floor tinted deep purple — boss arena
 
 var _needs_intro := false
 
@@ -113,6 +112,39 @@ func _setup_encounters() -> void:
 	boss_enc.enemy_group = _create_boss_group()
 	encounter_zones.append(boss_enc)
 
+	# Place enemy sprites on the overworld
+	_spawn_encounter_sprites()
+
+# ── Encounter Sprites ────────────────────────────────────────────────
+
+const ENEMY_SPRITE_HEIGHT := 72.0  # ~1.5 tiles tall, imposing presence
+
+func _spawn_encounter_sprites() -> void:
+	for enc in encounter_zones:
+		if enc.defeated:
+			continue
+		# Use the first enemy's idle sprite
+		var enemy_data: EnemyData = enc.enemy_group[0]
+		var idle_path: String = enemy_data.sprite_idle + "/frame_0.png"
+		var tex := load(idle_path) as Texture2D
+		if tex == null:
+			push_warning("Overworld: missing enemy sprite: %s" % idle_path)
+			continue
+
+		# Place at center of encounter zone
+		var center: Vector2i = enc.grid_positions[0]
+		var spr := Sprite2D.new()
+		spr.texture = tex
+		var s := ENEMY_SPRITE_HEIGHT / float(tex.get_height())
+		spr.scale = Vector2(s, s)
+		spr.position = Vector2(
+			center.x * TILE_SIZE + TILE_SIZE * 0.5,
+			center.y * TILE_SIZE + TILE_SIZE * 0.5
+		)
+		spr.z_index = center.y + 1  # render above floor
+		add_child(spr)
+		enc.overworld_sprite = spr
+
 # ── Enemy Factories ──────────────────────────────────────────────────
 
 func _create_goblin_data() -> EnemyData:
@@ -129,6 +161,8 @@ func _create_goblin_data() -> EnemyData:
 	goblin.battle_color = Color(0.4, 0.5, 0.3)
 	goblin.sprite_path = "res://assets/sprites/battle/goblin.png"
 	goblin.sprite_idle = "res://assets/sprites/battle/frames/goblin_idle"
+	goblin.sprite_defend = "res://assets/sprites/battle/frames/goblin_defend"
+	goblin.defend_hold_frame = 5
 	goblin.attack_sprite_map = {
 		"Goblin Slash": "res://assets/sprites/battle/frames/goblin_slash",
 		"Double Strike": "res://assets/sprites/battle/frames/goblin_double_strike",
@@ -167,6 +201,8 @@ func _create_wraith_data() -> EnemyData:
 	wraith.sprite_scale = 1.1
 	wraith.sprite_path = "res://assets/sprites/battle/wraith.png"
 	wraith.sprite_idle = "res://assets/sprites/battle/frames/wraith_idle"
+	wraith.sprite_defend = "res://assets/sprites/battle/frames/wraith_defend"
+	wraith.defend_hold_frame = 5
 	wraith.attack_sprite_map = {
 		"Spectral Claw": "res://assets/sprites/battle/frames/wraith_spectral_claw",
 		"Delayed Haunt": "res://assets/sprites/battle/frames/wraith_delayed_haunt",
@@ -208,6 +244,8 @@ func _create_golem_data() -> EnemyData:
 	golem.sprite_scale = 1.3
 	golem.sprite_path = "res://assets/sprites/battle/golem.png"
 	golem.sprite_idle = "res://assets/sprites/battle/frames/golem_idle"
+	golem.sprite_defend = "res://assets/sprites/battle/frames/golem_defend"
+	golem.defend_hold_frame = 7
 	golem.attack_sprite_map = {
 		"Ground Slam": "res://assets/sprites/battle/frames/golem_ground_slam",
 		"Boulder Toss": "res://assets/sprites/battle/frames/golem_boulder_toss",
@@ -253,6 +291,8 @@ func _create_boss_data() -> EnemyData:
 	boss.sprite_scale = 2.0
 	boss.sprite_path = "res://assets/sprites/battle/boss_dark_knight.png"
 	boss.sprite_idle = "res://assets/sprites/battle/frames/dark_knight_idle"
+	boss.sprite_defend = "res://assets/sprites/battle/frames/dark_knight_defend"
+	boss.defend_hold_frame = 7
 	boss.attack_sprite_map = {
 		"Blade Combo": "res://assets/sprites/battle/frames/dark_knight_blade_combo",
 		"Delayed Thrust": "res://assets/sprites/battle/frames/dark_knight_delayed_thrust",
@@ -338,24 +378,52 @@ func _create_boss_group() -> Array:
 
 # ── Map Rendering ────────────────────────────────────────────────────
 
+func _load_tiles() -> void:
+	var base := "res://assets/sprites/overworld/tiles/"
+	for i in range(1, 5):
+		var img := Image.load_from_file(base + "floor_%d.png" % i)
+		img.resize(TILE_SIZE, TILE_SIZE, Image.INTERPOLATE_NEAREST)
+		_tile_floors.append(img)
+
+	_tile_wall = Image.load_from_file(base + "wall_mid.png")
+	_tile_wall.resize(TILE_SIZE, TILE_SIZE, Image.INTERPOLATE_NEAREST)
+
+	_tile_encounter = _tile_floors[0].duplicate()
+	_tint_image(_tile_encounter, Color(1.6, 0.5, 0.5))
+
+	_tile_boss = _tile_floors[0].duplicate()
+	_tint_image(_tile_boss, Color(1.0, 0.35, 1.5))
+
+func _tint_image(img: Image, tint: Color) -> void:
+	for y in range(img.get_height()):
+		for x in range(img.get_width()):
+			var p := img.get_pixel(x, y)
+			img.set_pixel(x, y, Color(
+				clampf(p.r * tint.r, 0.0, 1.0),
+				clampf(p.g * tint.g, 0.0, 1.0),
+				clampf(p.b * tint.b, 0.0, 1.0),
+				p.a
+			))
+
 func _render_map() -> void:
+	_load_tiles()
 	_map_image = Image.create(MAP_COLS * TILE_SIZE, MAP_ROWS * TILE_SIZE, false, Image.FORMAT_RGBA8)
 
 	for r in range(MAP_ROWS):
 		for c in range(MAP_COLS):
-			var color: Color
+			var tile: Image
 			if map_grid[r][c] == 1:
-				color = COLOR_WALL
+				tile = _tile_wall
 			else:
-				color = COLOR_FLOOR
+				tile = _tile_floors[(c * 3 + r * 7) % _tile_floors.size()]
 				for enc in encounter_zones:
 					if not enc.defeated:
 						for gp in enc.grid_positions:
 							if gp.x == c and gp.y == r:
-								color = COLOR_BOSS_FLOOR if enc.is_boss else COLOR_ENCOUNTER
+								tile = _tile_boss if enc.is_boss else _tile_encounter
 								break
 
-			_fill_tile(_map_image, c, r, color)
+			_fill_tile(_map_image, c, r, tile)
 
 	_map_texture = ImageTexture.create_from_image(_map_image)
 	_map_sprite = Sprite2D.new()
@@ -372,10 +440,10 @@ func _render_map() -> void:
 	_add_room_label("Golem Chamber", Vector2i(9, 26))
 	_add_room_label("Boss Arena", Vector2i(9, 32))
 
-func _fill_tile(img: Image, col: int, row: int, color: Color) -> void:
+func _fill_tile(img: Image, col: int, row: int, tile: Image) -> void:
 	var x0: int = col * TILE_SIZE
 	var y0: int = row * TILE_SIZE
-	img.fill_rect(Rect2i(x0, y0, TILE_SIZE, TILE_SIZE), color)
+	img.blit_rect(tile, Rect2i(0, 0, TILE_SIZE, TILE_SIZE), Vector2i(x0, y0))
 
 func _add_room_label(text: String, grid_pos: Vector2i) -> void:
 	var lbl := Label.new()
@@ -430,7 +498,7 @@ func _show_intro() -> void:
 	overlay.add_child(panel)
 
 	var lbl := Label.new()
-	lbl.text = "The rift grows stronger...\nNavigate the dungeon. Danger awaits.\n\n[WASD / Arrows to move]"
+	lbl.text = "The rift grows stronger...\nNavigate the dungeon. Danger awaits.\n\n[WASD / Arrows to move]  [Tab to switch leader]"
 	lbl.add_theme_font_size_override("font_size", 14)
 	lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.9))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -461,6 +529,7 @@ func on_player_moved(grid_pos: Vector2i) -> void:
 		for gp in enc.grid_positions:
 			if gp == grid_pos:
 				player_node.frozen = true
+				Sfx.play("battle_encounter", -5.0)
 				main_node.start_battle(enc.id, enc.enemy_group, enc.is_boss)
 				return
 
@@ -468,6 +537,9 @@ func on_battle_won(encounter_id: int) -> void:
 	for enc in encounter_zones:
 		if enc.id == encounter_id:
 			enc.defeated = true
+			if enc.overworld_sprite:
+				enc.overworld_sprite.queue_free()
+				enc.overworld_sprite = null
 			break
 	# Re-render encounter zone colors
 	_update_encounter_visuals()
@@ -486,7 +558,8 @@ func _update_encounter_visuals() -> void:
 	for enc in encounter_zones:
 		if enc.defeated:
 			for gp in enc.grid_positions:
-				_fill_tile(_map_image, gp.x, gp.y, COLOR_FLOOR)
+				var tile: Image = _tile_floors[(gp.x * 3 + gp.y * 7) % _tile_floors.size()]
+				_fill_tile(_map_image, gp.x, gp.y, tile)
 	_map_texture.update(_map_image)
 
 func _show_game_complete() -> void:

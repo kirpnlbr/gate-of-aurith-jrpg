@@ -212,11 +212,13 @@ func _process(delta: float) -> void:
 				_waiting_for_input = true
 				_window_timer = 0.0
 				_lunge_at_target()
-				if indicator:
-					var tgt_pos := Vector2(100, 300)
-					if not target_character.is_empty() and target_character.has("sprite") and target_character.sprite and is_instance_valid(target_character.sprite):
-						tgt_pos = target_character.sprite.position
-					indicator.start_indicator(_window_duration, 0.0, tgt_pos)
+				# Don't show the parry ring when the target is defending — can't react while bracing
+				if not target_character.get("defending", false):
+					if indicator:
+						var tgt_pos := Vector2(100, 300)
+						if not target_character.is_empty() and target_character.has("sprite") and target_character.sprite and is_instance_valid(target_character.sprite):
+							tgt_pos = target_character.sprite.position
+						indicator.start_indicator(_window_duration, 0.0, tgt_pos)
 
 		ParryState.WINDOW_OPEN:
 			_window_timer += delta
@@ -303,7 +305,7 @@ func _calculate_hit_damage(hit: Dictionary) -> int:
 	if target_character.has("buffs") and target_character.buffs.has("buff_def"):
 		def = int(def * 1.3)
 	if target_character.has("defending") and target_character.defending:
-		def = int(def * 2.0)
+		def = int(def * 1.5)
 	var dmg := DamageCalculator.calculate_enemy_damage(
 		attacker.data.attack, def, hit.get("damage_pct", 1.0))
 	if target_character.has("stance_damage_taken_mult"):
@@ -315,6 +317,9 @@ func _calculate_hit_damage(hit: Dictionary) -> int:
 func _on_parry_input(input_type: String) -> void:
 	if not _waiting_for_input:
 		return
+	# Can't parry or dodge while in a defensive stance — hit always lands (with reduced damage)
+	if input_type != "miss" and target_character.get("defending", false):
+		input_type = "miss"
 	_waiting_for_input = false
 	current_state = ParryState.HIT_RESOLVING
 

@@ -7,7 +7,7 @@ const ACTION_DESCRIPTIONS: Dictionary = {
 	"attack": "Basic physical attack on one enemy.",
 	"skill": "Use a special ability. Costs AP.",
 	"item": "Use an item from your inventory.",
-	"defend": "Reduce damage taken until next turn.",
+	"defend": "Reduce damage taken until next turn. Cannot parry or dodge.",
 }
 
 var buttons: Dictionary = {}

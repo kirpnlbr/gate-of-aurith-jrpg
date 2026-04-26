@@ -16,4 +16,6 @@ extends Resource
 @export var sprite_scale: float = 1.0
 @export var sprite_path: String = ""
 @export var sprite_idle: String = "" # folder path for idle animation frames
+@export var sprite_defend: String = "" # folder path for defend animation frames
+@export var defend_hold_frame: int = 0 # frame index to hold on during defensive stance
 @export var attack_sprite_map: Dictionary = {} # { "Goblin Slash": "res://...frames/goblin_slash" }

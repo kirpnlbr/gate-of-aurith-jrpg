@@ -6,3 +6,4 @@ var grid_positions: Array[Vector2i] = []
 var enemy_group: Array = [] # Array of EnemyData
 var is_boss: bool = false
 var defeated: bool = false
+var overworld_sprite: Sprite2D = null  # enemy sprite on the overworld map

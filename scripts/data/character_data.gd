@@ -19,5 +19,9 @@ extends Resource
 @export var sprite_parry_alt: String = "" # alternate parry (e.g. Gustave greatshield stance)
 @export var sprite_counter: String = "" # folder path for counterattack animation frames
 @export var sprite_counter_alt: String = "" # alternate counter (e.g. Gustave greatshield stance)
+@export var sprite_defend: String = ""      # folder path for defend animation frames
+@export var sprite_defend_alt: String = "" # alternate defend (e.g. Gustave greatshield stance)
+@export var defend_hold_frame: int = 0     # frame index to hold on after intro plays
+@export var defend_hold_frame_alt: int = 0
 @export var sprite_skill: String = "" # fallback single-skill folder
 @export var skill_sprite_map: Dictionary = {} # { "Fireball": "res://...frames/mage_fireball", ... }
